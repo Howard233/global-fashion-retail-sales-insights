@@ -172,3 +172,13 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+**/.terraform/*
+*.terraform.lock*
+
+kaggle.json

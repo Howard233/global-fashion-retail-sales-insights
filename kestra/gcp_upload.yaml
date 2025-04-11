@@ -1,0 +1,45 @@
+id: gcp_upload
+namespace: fashion
+
+tasks:
+  - id: download_and_unzip
+    type: io.kestra.plugin.scripts.shell.Commands
+    outputFiles:
+      - "*.csv"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - mkdir -p /tmp/fashion_data
+      - curl -L -o /tmp/fashion_data/global-fashion-retail-stores-dataset.zip "https://www.kaggle.com/api/v1/datasets/download/ricgomes/global-fashion-retail-stores-dataset"
+      - unzip /tmp/fashion_data/global-fashion-retail-stores-dataset.zip
+      # - find /tmp/fashion_data/ -name "*.csv" -type f # List all CSV files for verification
+
+  - id: upload_each_csv
+    type: io.kestra.plugin.core.flow.ForEach
+    values: ["customers", "discounts", "employees", "products", "stores", "transactions"]
+    # values: ["discounts"]
+    tasks:
+      - id: upload_to_bucket
+        type: io.kestra.plugin.gcp.gcs.Upload
+        from: "{{ outputs.download_and_unzip.outputFiles[ taskrun.value ~ '.csv'] }}" 
+        to: "gs://{{kv('GCP_BUCKET_NAME')}}/{{ taskrun.value }}.csv"
+
+      - id: create_external_table
+        type: io.kestra.plugin.gcp.bigquery.Query
+        sql: |
+          CREATE OR REPLACE EXTERNAL TABLE {{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.{{taskrun.value | lower }} 
+          OPTIONS 
+          (
+            format = 'CSV',
+            uris = ["gs://{{kv('GCP_BUCKET_NAME')}}/{{ taskrun.value }}.csv"],
+            ignore_unknown_values = TRUE
+          );
+
+pluginDefaults:
+  - type: io.kestra.plugin.gcp
+    values:
+      serviceAccount: "{{kv('GCP_CREDS')}}"
+      projectId: "{{kv('GCP_PROJECT_ID')}}"
+      location: "{{kv('GCP_LOCATION')}}"
+      bucket: "{{kv('GCP_BUCKET_NAME')}}"
+      dataset: "{{kv('GCP_DATASET')}}"
