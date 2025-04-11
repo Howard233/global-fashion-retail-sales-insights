@@ -102,7 +102,7 @@ select * from {YOUR_PROJECT_ID}.global_fashion_retail_sales_insights.stores limi
 select * from {YOUR_PROJECT_ID}.global_fashion_retail_sales_insights.transactions limit 1;
 ```
 
-The complete flow can be found in `gcp_upload.yaml`, and you can paste the config into Kestra UI and execute the flow. 
+The complete flow can be found in `gcp_upload.yaml`, and you can paste the config into Kestra UI and execute the flow. It may take some time to finish.
 
 ### Transform the data with dbt
 We use dbt cloud to transform the data into a fact table. 
