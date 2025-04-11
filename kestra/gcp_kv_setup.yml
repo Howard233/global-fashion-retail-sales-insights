@@ -1,0 +1,38 @@
+id: gcp_kv_setup
+namespace: fashion
+
+tasks:
+  - id: gcp_creds
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_CREDS
+    kvType: JSON
+    # TODO: replace below with the content of your json
+    value: |
+      {
+        "type": "service_account",
+        ...
+      } 
+
+  - id: gcp_project_id
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_PROJECT_ID
+    kvType: STRING
+    value: YOUR_PROJECT_ID # TODO replace with your project id
+
+  - id: gcp_location
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_LOCATION
+    kvType: STRING
+    value: YOUR_PROJECT_LOCATION # TODO replace with your project location
+
+  - id: gcp_bucket_name
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_BUCKET_NAME
+    kvType: STRING
+    value: YOUR_BUCKET_NAME # TODO make sure it's globally unique!
+
+  - id: gcp_dataset
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_DATASET
+    kvType: STRING
+    value: YOUR_DATASET_NAME # TODO make sure it's globally unique!
