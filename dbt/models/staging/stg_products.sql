@@ -6,4 +6,4 @@ select product_id, category, sub_category, description_en, color, sizes, product
 from products
 
 -- dbt build --select <model_name> --vars '{'is_test_run': 'false'}'
-{% if var("is_test_run", default=true) %} limit 100 {% endif %}
+-- {% if var("is_test_run", default=true) %} limit 100 {% endif %}

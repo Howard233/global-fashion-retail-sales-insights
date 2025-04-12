@@ -6,4 +6,4 @@ select store_id, country, city, number_of_employees
 from stores
 
 -- dbt build --select <model_name> --vars '{'is_test_run': 'false'}'
-{% if var("is_test_run", default=true) %} limit 100 {% endif %}
+-- {% if var("is_test_run", default=true) %} limit 100 {% endif %}
