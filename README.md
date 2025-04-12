@@ -86,28 +86,31 @@ The first step is to execute the key-value pair flow in Kestra. Please replace t
 #### Download and upload the data files to GCP
 We then download and upload the data files to GCP. Kaggle provides a `curL` command to download the zipped data files. We include this command in our Kestra workflow. 
 
-Once the download is completed, we unzip the raw data in Kestra, upload the csv files to our GCP bucket, and create external tables in BigQuery to prepare for the transformation. You should expect to see the following tables in your BigQuery dashboard:
+Once the download is completed, we unzip the raw data in Kestra, upload the csv files to our GCP bucket, and create tables in BigQuery to prepare for the transformation. You should expect to see the following tables in your BigQuery dashboard:
 ```
 -- check with below queries
-select * from {YOUR_PROJECT_ID}.global_fashion_retail_sales_insights.customers limit 1;
+-- These tables are clustered/partitioned during the process
+-- Remember to input your project ID and dataset name
 
-select * from {YOUR_PROJECT_ID}.global_fashion_retail_sales_insights.discounts limit 1;
+select * from {YOUR_PROJECT_ID}.{YOUR_BQ_DATASET_NAME}.customers limit 1;
 
-select * from {YOUR_PROJECT_ID}.global_fashion_retail_sales_insights.employees limit 1;
+select * from {YOUR_PROJECT_ID}.{YOUR_BQ_DATASET_NAME}.discounts limit 1;
 
-select * from {YOUR_PROJECT_ID}.global_fashion_retail_sales_insights.products limit 1;
+select * from {YOUR_PROJECT_ID}.{YOUR_BQ_DATASET_NAME}.employees limit 1;
 
-select * from {YOUR_PROJECT_ID}.global_fashion_retail_sales_insights.stores limit 1;
+select * from {YOUR_PROJECT_ID}.{YOUR_BQ_DATASET_NAME}.products limit 1;
 
-select * from {YOUR_PROJECT_ID}.global_fashion_retail_sales_insights.transactions limit 1;
+select * from {YOUR_PROJECT_ID}.{YOUR_BQ_DATASET_NAME}.stores limit 1;
+
+select * from {YOUR_PROJECT_ID}.{YOUR_BQ_DATASET_NAME}.transactions limit 1;
 ```
 
-The complete flow can be found in `gcp_upload.yaml`, and you can paste the config into Kestra UI and execute the flow. It may take some time to finish.
+The complete flow can be found in `gcp_upload.yaml`, and you can paste the config into Kestra UI and execute the flow. It may take some time to finish as some of the csv files are large.
 
 ### Transform the data with dbt
-We use dbt cloud to transform the data into a fact table. 
+We use `dbt cloud` to transform the data into a fact table. 
 
-Data Engineering Zoomcamp provides a great [instructions](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/04-analytics-engineering/dbt_cloud_setup.md) on how to set up dbt cloud with BigQuery. Below is a brief summary of the setup (you should have complete the setup for Google Cloud project and have the json key file ready):
+Data Engineering Zoomcamp provides a great [instructions](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/04-analytics-engineering/dbt_cloud_setup.md) on how to set up `dbt cloud` with `BigQuery`. Below is a brief summary of the setup (you should have completed the setup for Google Cloud project and have the JSON key file ready):
 
 #### Create a dbt cloud project
 1. Create a dbt cloud account from their [webiste](https://www.getdbt.com/pricing). It should be free for individual developer.
@@ -126,3 +129,6 @@ Data Engineering Zoomcamp provides a great [instructions](https://github.com/Dat
 1. Select `git clone` in the Git setting and paste the SSH key from your repo
 
 2. You will get a deploy key, head to your GitHub repo and go to the settings tab. Under security you'll find the menu deploy keys. Click on add key and paste the deploy key provided by dbt cloud. Make sure to tick on "write access"
+
+#### Development in dbt cloud Dashboard
+You should now have created a new project on dbt. You can then go to `Develop`->`Cloud IDE` and initialize the files by clicking the `create branch` from your dbt dashboard. 
