@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: staging
+    database: "{{ env_var('DBT_DATABASE', 'dtc-de-course-447701') }}"
+    schema: "{{ env_var('DBT_SCHEMA', 'global_fashion_retail_sales_insights') }}"
+
+    tables:
+      - name: customers
+      - name: discounts
+      - name: employees
+      - name: products
+      - name: stores
+      - name: transactions
+
+
