@@ -6,8 +6,8 @@ inputs:
     allowCustomValue: true
     defaults: dbt build
     values:
-      - "dbt build --vars '{'is_test_run': 'false'}"
-      - dbt debug # use when running the first time to validate DB connection
+      - dbt build
+      - dbt debug
 
 tasks:
   - id: sync
