@@ -10,30 +10,237 @@ tasks:
       type: io.kestra.plugin.core.runner.Process
     commands:
       - mkdir -p /tmp/fashion_data
-      - curl -L -o /tmp/fashion_data/global-fashion-retail-stores-dataset.zip "https://www.kaggle.com/api/v1/datasets/download/ricgomes/global-fashion-retail-stores-dataset"
+      - curl -sS -L -o /tmp/fashion_data/global-fashion-retail-stores-dataset.zip "https://www.kaggle.com/api/v1/datasets/download/ricgomes/global-fashion-retail-stores-dataset"
       - unzip /tmp/fashion_data/global-fashion-retail-stores-dataset.zip
-      # - find /tmp/fashion_data/ -name "*.csv" -type f # List all CSV files for verification
 
-  - id: upload_each_csv
-    type: io.kestra.plugin.core.flow.ForEach
-    values: ["customers", "discounts", "employees", "products", "stores", "transactions"]
-    # values: ["discounts"]
+  - id: upload_and_create_table
+    type: io.kestra.plugin.core.flow.Parallel
     tasks:
-      - id: upload_to_bucket
-        type: io.kestra.plugin.gcp.gcs.Upload
-        from: "{{ outputs.download_and_unzip.outputFiles[ taskrun.value ~ '.csv'] }}" 
-        to: "gs://{{kv('GCP_BUCKET_NAME')}}/{{ taskrun.value }}.csv"
+    - id: customers
+      type: io.kestra.plugin.core.flow.Sequential
+      tasks:  
+        - id: upload_customers_to_bucket
+          type: io.kestra.plugin.gcp.gcs.Upload
+          from: "{{ outputs.download_and_unzip.outputFiles[ 'customers.csv'] }}" 
+          to: "gs://{{kv('GCP_BUCKET_NAME')}}/customers.csv"
+        - id: create_customers_external_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.customers_ext`
+            (
+              customer_id INT64 OPTIONS(description="Unique numeric identifier for the customer"),
+              name STRING OPTIONS(description="Full name (may include titles/honorifics like Mr. or professional suffixes"),
+              email STRING OPTIONS(description="Anonymized email with fake domains (fake_gmail.com, fake_hotmail.com)"),
+              telephone STRING OPTIONS(description="Phone number with inconsistent formatting (mix of country codes and extensions)"),
+              city STRING OPTIONS(description="City"),
+              country STRING OPTIONS(description="Country"),
+              gender STRING OPTIONS(description="Gender (F, M, D) D = «diverse»"),
+              date_of_birth DATE OPTIONS(description="Birthdate in YYYY-MM-DD format"),
+              job_title STRING OPTIONS(description="Occupation (optional field; may be empty or contain multiple roles)")
+            )
+            OPTIONS(
+              skip_leading_rows=1,
+              ignore_unknown_values=true,
+              format="CSV",
+              uris = ["gs://{{kv('GCP_BUCKET_NAME')}}/customers.csv"]
+            );
+        - id: create_customers_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.customers`
+            CLUSTER BY
+              customer_id, country, city, gender
+            AS SELECT * FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.customers_ext`;
 
-      - id: create_external_table
-        type: io.kestra.plugin.gcp.bigquery.Query
-        sql: |
-          CREATE OR REPLACE EXTERNAL TABLE {{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.{{taskrun.value | lower }} 
-          OPTIONS 
-          (
-            format = 'CSV',
-            uris = ["gs://{{kv('GCP_BUCKET_NAME')}}/{{ taskrun.value }}.csv"],
-            ignore_unknown_values = TRUE
-          );
+    - id: discounts
+      type: io.kestra.plugin.core.flow.Sequential
+      tasks:  
+        - id: upload_discounts_to_bucket
+          type: io.kestra.plugin.gcp.gcs.Upload
+          from: "{{ outputs.download_and_unzip.outputFiles[ 'discounts.csv'] }}" 
+          to: "gs://{{kv('GCP_BUCKET_NAME')}}/discounts.csv"
+        - id: create_discounts_external_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.discounts_ext`
+            (
+              start_date DATE OPTIONS(description="Date when the discount becomes active, in YYYY-MM-DD format"),
+              end_date DATE OPTIONS(description="Date when the discount expires, in YYYY-MM-DD format"),
+              discount NUMERIC OPTIONS(description="Decimal value representing the discount rate (e.g., 0.20 means 20% discount)"),
+              description STRING OPTIONS(description="Brief description of the discount campaign"),
+              category STRING OPTIONS(description="Product categories to which the discount applies"),
+              sub_category STRING OPTIONS(description="Product Sub Category to which the discount applies")
+            )
+            OPTIONS(
+              skip_leading_rows=1,
+              ignore_unknown_values=true,
+              format="CSV",
+              uris = ["gs://{{kv('GCP_BUCKET_NAME')}}/discounts.csv"]
+            );
+        - id: create_discounts_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.discounts`
+            CLUSTER BY
+              start_date, end_date, category, sub_category
+            AS SELECT * FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.discounts_ext`;
+
+    - id: employees
+      type: io.kestra.plugin.core.flow.Sequential
+      tasks:  
+        - id: upload_employees_to_bucket
+          type: io.kestra.plugin.gcp.gcs.Upload
+          from: "{{ outputs.download_and_unzip.outputFiles[ 'employees.csv'] }}" 
+          to: "gs://{{kv('GCP_BUCKET_NAME')}}/employees.csv"
+        - id: create_employees_external_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.employees_ext`
+            (
+              employee_id INT64 OPTIONS(description="Unique numeric identifier for the employee"),
+              store_id INT64 OPTIONS(description="Foreign key linking to the Store ID location in stores.csv"),
+              name STRING OPTIONS(description="Full name in [First Name] [Last Name] format"),
+              position STRING OPTIONS(description="Role within store hierarchy (Manager oversees operations, Seller handles transactions)")
+            )
+            OPTIONS(
+              skip_leading_rows=1,
+              ignore_unknown_values=true,
+              format="CSV",
+              uris = ["gs://{{kv('GCP_BUCKET_NAME')}}/employees.csv"]
+            );
+        - id: create_employees_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.employees`
+            CLUSTER BY
+              employee_id, store_id, position
+            AS SELECT * FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.employees_ext`;
+
+    - id: products
+      type: io.kestra.plugin.core.flow.Sequential
+      tasks:  
+        - id: upload_products_to_bucket
+          type: io.kestra.plugin.gcp.gcs.Upload
+          from: "{{ outputs.download_and_unzip.outputFiles[ 'products.csv'] }}" 
+          to: "gs://{{kv('GCP_BUCKET_NAME')}}/products.csv"
+        - id: create_products_external_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.products_ext`
+              (
+                product_id INT64 OPTIONS(description="Unique numeric identifier for the product"),
+                category STRING OPTIONS(description="High-level classification of the product (EN) (e.g., Feminine, Masculine, Children)"),
+                sub_category STRING OPTIONS(description="More specific classification within the category (EN)"),
+                description_pt STRING OPTIONS(description="Product description in Portuguese"),
+                description_de STRING OPTIONS(description="Product description in German"),
+                description_fr STRING OPTIONS(description="Product description in French"),
+                description_es STRING OPTIONS(description="Product description in Spanish"),
+                description_en STRING OPTIONS(description="Product description in English"),
+                description_zh STRING OPTIONS(description="Product description in Chinese"),
+                color STRING OPTIONS(description="Product Color"),
+                sizes STRING OPTIONS(description="Product Sizes Available"),
+                production_cost NUMERIC OPTIONS(description="Cost incurred to produce the Product in USD")
+              )
+              OPTIONS(
+                skip_leading_rows=1,
+                ignore_unknown_values=true,
+                format="CSV",
+                uris = ["gs://{{kv('GCP_BUCKET_NAME')}}/products.csv"]
+              );
+        - id: create_products_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.products`
+            CLUSTER BY
+              product_id, category, sub_category
+            AS SELECT * FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.products_ext`;
+
+    - id: stores
+      type: io.kestra.plugin.core.flow.Sequential
+      tasks:  
+        - id: upload_stores_to_bucket
+          type: io.kestra.plugin.gcp.gcs.Upload
+          from: "{{ outputs.download_and_unzip.outputFiles[ 'stores.csv'] }}" 
+          to: "gs://{{kv('GCP_BUCKET_NAME')}}/stores.csv"
+        - id: create_stores_external_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.stores_ext`
+              (
+                store_id INT64 OPTIONS(description="Unique identifier for the store location"),
+                country STRING OPTIONS(description="Country where the store is located"),
+                city STRING OPTIONS(description="City where the store is located"),
+                store_name STRING OPTIONS(description="Human-readable name following the format Store [City]"),
+                number_of_employees INT64 OPTIONS(description="Total employees assigned to the store"),
+                zip_code STRING OPTIONS(description="Postal code for the store’s location"),
+                latitude NUMERIC OPTIONS(description="Geographical latitude of the store location"),
+                longitude NUMERIC OPTIONS(description="Geographical longitude of the store location")
+              )
+              OPTIONS(
+                skip_leading_rows=1,
+                ignore_unknown_values=true,
+                format="CSV",
+                uris = ["gs://{{kv('GCP_BUCKET_NAME')}}/stores.csv"]
+              );
+        - id: create_stores_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.stores`
+            CLUSTER BY
+              store_id, country, city
+            AS SELECT * FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.stores_ext`;
+
+    - id: transactions
+      type: io.kestra.plugin.core.flow.Sequential
+      tasks:  
+        - id: upload_transactions_to_bucket
+          type: io.kestra.plugin.gcp.gcs.Upload
+          from: "{{ outputs.download_and_unzip.outputFiles[ 'transactions.csv'] }}" 
+          to: "gs://{{kv('GCP_BUCKET_NAME')}}/transactions.csv"
+        - id: create_transactions_external_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.transactions_ext`
+              (
+                invoice_id STRING OPTIONS (description = 'A unique identifier for each transaction, distinguishing sales and returns. It follows the format: (INV for sales or RET for returns) + Country Code + Store ID + Sequential Counter. This ensures all items from the same transaction are grouped under the same invoice.'),
+                line INTEGER OPTIONS (description = 'Sequential number representing the position of the product in the invoice. A single invoice can contain multiple line items.'),
+                customer_id INTEGER OPTIONS (description = 'Unique identifier referencing the customer who made the purchase, found in customers.csv.'),
+                product_id INTEGER OPTIONS (description = 'Unique identifier referencing the product purchased, found in products.csv.'),
+                sizes STRING OPTIONS (description = 'Product size variant (e.g., S, M, L, XL). Left blank if not applicable.'),
+                color STRING OPTIONS (description = 'Color variation of the product. Left blank if not applicable.'), 
+                unit_rice	NUMERIC OPTIONS (description = 'Price of a single unit of the product before any discounts are applied.'),
+                quantity INTEGER OPTIONS (description = 'Number of units of the product purchased within this invoice line item.'),
+                date TIMESTAMP OPTIONS (description = 'Date and time of the transaction in the format YYYY-MM-DD HH:MM:SS (24-hour format).'),
+                discount NUMERIC OPTIONS (description = 'Discount applied to the line item, represented as a decimal (e.g., 0.30 = 30% discount, 0.00 = no discount), found list of discounts.csv.'),
+                line_total NUMERIC OPTIONS (description = 'Total cost for the line item after applying any discounts. Calculated as: Unit Price * Quantity * (1 - Discount).'),
+                store_id INTEGER OPTIONS (description = 'Unique identifier referencing the store where the transaction took place, found in stores.csv.'),
+                employee_id INTEGER OPTIONS (description = 'Unique identifier referencing the employee who processed the transaction, found in employees.csv.'),
+                currency STRING OPTIONS (description = 'Three-letter ISO currency code representing the currency used for the transaction (e.g., USD, EUR, CNY, GBP).'),
+                currency_symbol	STRING OPTIONS (description = 'Symbol associated with the transaction currency (e.g., $, €, £, ¥).'),
+                sku STRING OPTIONS (description = 'Stock Keeping Unit (SKU), a unique inventory code combining the Product ID, Size, and Color (e.g., FESH81-M-PINK = Product ID 81 + Size M + Color PINK).'),
+                transaction_type STRING OPTIONS (description = 'Specifies whether the transaction is a Sale or Return.'),
+                payment_method STRING OPTIONS (description = 'Method used to complete the transaction (e.g., Credit Card, Cash).'),
+                invoice_total	NUMERIC OPTIONS (description = 'Refers to the total value of the transaction (Invoice ID). It is the sum of all Line Total values for the same Invoice ID. This value is repeated across all line items within the same Invoice ID.')
+              )
+              OPTIONS(
+                skip_leading_rows=1,
+                ignore_unknown_values=true,
+                format="CSV",
+                uris = ["gs://{{kv('GCP_BUCKET_NAME')}}/transactions.csv"]
+              );
+        - id: create_transactions_table
+          type: io.kestra.plugin.gcp.bigquery.Query
+          sql: |
+            CREATE OR REPLACE TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.transactions`
+            PARTITION BY DATE(date)
+            AS SELECT * FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.transactions_ext`;
+
+  - id: clean_folder
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - rm -rf /tmp/fashion_data
 
 pluginDefaults:
   - type: io.kestra.plugin.gcp
