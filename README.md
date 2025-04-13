@@ -23,7 +23,10 @@ The dataset is downloaded from Kaggle: **Global Fashion Retail Sales**. This syn
 * **Data Warehouse**: BigQuery
 * **Containerization**: Docker
 * **Infrastructure as code (IaC)**: Terraform
-* **Batch processing**: dbt
+* **Batch processing**: dbt (executed by Kestra)
+
+## Overview of the pipeline
+![Flow](Flow.png)
 
 ## Guideline to reproduce the project
 ### Set up your Google Cloud project
@@ -108,27 +111,23 @@ select * from {YOUR_PROJECT_ID}.{YOUR_BQ_DATASET_NAME}.transactions limit 1;
 The complete flow can be found in `gcp_upload.yaml`, and you can paste the config into Kestra UI and execute the flow. It may take some time to finish as some of the csv files are large.
 
 ### Transform the data with dbt
-We use `dbt cloud` to transform the data into a fact table. 
+We use `dbt cloud` to transform the data into a fact table in BigQuery. It turns out that `Kestra` is able to execute `dbt` command and transform the data given the `dbt models`. All the relevant dbt development is included in the `dbt` folder under this repo, and the Kestra workflow can be found in `gcp_dbt.yml`. You should be able to see the transformed table after you execute the flow in Kestra.
 
-Data Engineering Zoomcamp provides a great [instructions](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/04-analytics-engineering/dbt_cloud_setup.md) on how to set up `dbt cloud` with `BigQuery`. Below is a brief summary of the setup (you should have completed the setup for Google Cloud project and have the JSON key file ready):
+You should be able to execute the flow without a dbt cloud account. In case there are any unexpected error, you can execute the command in `dbt cloud`. Data Engineering Zoomcamp provides a great [instructions](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/04-analytics-engineering/dbt_cloud_setup.md) on how to set up `dbt cloud` with `BigQuery`. Please check this out if there are any issues.
 
-#### Create a dbt cloud project
-1. Create a dbt cloud account from their [webiste](https://www.getdbt.com/pricing). It should be free for individual developer.
+## Dashboard visualization with Google Looker Studio
 
-2. Create a new project once you logged in into dbt cloud. A free individual account allows a developer to have one project.
+I used `Google Looker Studio` to create this [dashboard](https://lookerstudio.google.com/s/r9UYcRvqd7Q) that visualize the fashion data. Feel free to check the report by clicking the link.
 
-3. Name your project.
+![report](report.png)
 
-4. Choose BigQuery as your data warehouse.
+### Analysis
+By examining the time series chart, we can find that for United States, the sales amount peaks occurred in Q4/Q1. This is probably due to holiday sales in the end/start of the year.
 
-5. Fill in the BigQuery settings.
+The pie chart shows the distribution of invoices across different countries. We can see that the US and China have similar distribution, followed by the rest of the countries.
 
-6. Click on *Test* to check the connection to BigQuery
+We can observe from the bar chart that female products have better sales for the other products. This pattern occurs for all of the countries.
 
-#### Add GitHub repository
-1. Select `git clone` in the Git setting and paste the SSH key from your repo
+The table summarizes the US sales amount for stores across different cities. New York and Los Angeles take the lead.
 
-2. You will get a deploy key, head to your GitHub repo and go to the settings tab. Under security you'll find the menu deploy keys. Click on add key and paste the deploy key provided by dbt cloud. Make sure to tick on "write access"
-
-#### Development in dbt cloud Dashboard
-You should now have created a new project on dbt. You can then go to `Develop`->`Cloud IDE` and initialize the files by clicking the `create branch` from your dbt dashboard. 
+To replicate the dashboard, you need to click create a Data source by clicking the `Create` button, select BigQuery as your connector, and select the transformed table we produced from the previous steps. 

@@ -13,11 +13,11 @@ tasks:
   - id: sync
     type: io.kestra.plugin.git.SyncNamespaceFiles
     # input your git repo url
-    url: https://github.com/Howard233/global-fashion-retail-sales-insights
+    url: INPUT_YOUR_GITHUB_REPO_URL
     branch: main
     namespace: "{{flow.namespace}}"
     # input path to the dbt folder
-    gitDirectory: dbt
+    gitDirectory: INPUT_THE_DBT_FOLDER_PATH_IN_YOUR_GITHUB
     dryRun: false
     # disabled: true # this Git Sync is needed only when running it the first time, afterwards the task can be disabled
 
