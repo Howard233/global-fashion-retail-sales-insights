@@ -2,34 +2,32 @@
 
 variable "credentials" {
   description = "My Credentials"
-  # default     = "INPUT THE PATH TO YOUR JSON FILE"
-  default     = "/Users/haozhewang/Desktop/DataEngineeringZoomCamp/dtc-de-course-447701-05ed30e6d5bc.json"
+  default     = "INPUT THE PATH TO YOUR JSON FILE"
 }
 
 variable "region" {
   description = "Region"
-  default     = "us-east1"
+  default     = "INPUT YOUR REGION"
 }
 
 variable "project" {
   description = "Project"
-  default     = "dtc-de-course-447701"
+  default     = "INPUT PROJECT ID"
 }
 
 variable "location" {
   description = "Project Location"
-  default     = "us-east1"
+  default     = "INPUT LOCATION"
 }
 
 variable "bq_dataset_name" {
   description = "BigQuery Dataset Name for the project"
-  default     = "global_fashion_retail_sales_insights"
+  default     = "INPUT DATASET NAME"
 }
 
 variable "gcs_bucket_name" {
   description = "Storage Bucket Name for the project"
-  # default     = "{YOUR-PROJECT_ID}-fashion-insights"
-  default     = "dtc-de-course-447701-fashion-insights"
+  default     = "INPUT BUCKET NAME"
 }
 
 variable "gcs_storage_class" {
