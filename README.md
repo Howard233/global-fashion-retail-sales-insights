@@ -108,7 +108,7 @@ select * from {YOUR_PROJECT_ID}.{YOUR_BQ_DATASET_NAME}.stores limit 1;
 select * from {YOUR_PROJECT_ID}.{YOUR_BQ_DATASET_NAME}.transactions limit 1;
 ```
 
-The complete flow can be found in `gcp_upload.yaml`, and you can paste the config into Kestra UI and execute the flow. It may take some time to finish as some of the csv files are large.
+The complete flow can be found in `gcp_upload.yaml`, and you can paste the config into Kestra UI and execute the flow. It may take some time (5-10 minutes) to finish as some of the csv files are large.
 
 ### Transform the data with dbt
 We use `dbt cloud` to transform the data into a fact table in BigQuery. It turns out that `Kestra` is able to execute `dbt` command and transform the data given the `dbt models`. All the relevant dbt development is included in the `dbt` folder under this repo, and the Kestra workflow can be found in `gcp_dbt.yml`. You should be able to see the transformed table after you execute the flow in Kestra.
